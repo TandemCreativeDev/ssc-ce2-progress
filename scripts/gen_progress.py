@@ -106,7 +106,10 @@ def label(name):
 
 def bar(value, total):
     pct = min(100, value / total * 100) if total else 0
-    return '<div class="bar"><span style="width:%.1f%%"></span></div>' % pct
+    # GOV.UK error red once a task is over its estimate.
+    over = ' class="over"' if total and value > total else ""
+    return '<div class="bar"><span%s style="width:%.1f%%"></span></div>' \
+        % (over, pct)
 
 
 def write_page(tracked, budget, rows):
@@ -115,9 +118,9 @@ def write_page(tracked, budget, rows):
     headline = "%s of %s days used" % (fmt(tracked), fmt(budget))
     sub = "%s days remaining" % fmt(max(0, budget - tracked))
     task_rows = "\n".join(
-        '<li><div class="row"><span>%s</span><b>%s%s d</b></div>%s</li>'
+        '<li><div class="row"><span>%s</span><b>%s <i>%s</i></b></div>%s</li>'
         % (html.escape(label(name)), fmt(d),
-           " / %s" % fmt(cap) if cap else "", bar(d, cap or tracked))
+           "/ %s d" % fmt(cap) if cap else "d", bar(d, cap or tracked))
         for name, d, cap in rows)
 
     page = TEMPLATE.format(headline=headline, sub=sub, updated=updated,
@@ -135,43 +138,49 @@ TEMPLATE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>SSC CE2 Progress</title>
 <style>
-  :root {{ --accent: #f58220; --text: #1a2238; --mute: #5a6478;
-          --track: #eceef2; --bg: #f7f8fa; --card: #fff; }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{ --text: #e8eaf0; --mute: #9aa2b4; --track: #2a2f3a;
-            --bg: #12151b; --card: #1b1f27; }}
-  }}
+  /* NHS / GOV.UK flavoured: flat blue on white, yellow keyline, grey
+     keyline borders, square corners, no dark mode. */
+  :root {{ --blue: #005eb8; --link: #1d70b8; --navy: #003087;
+          --yellow: #ffeb3b; --ink: #0b0c0c; --grey: #6f777b;
+          --line: #b1b4b6; --panel: #f3f2f1; --track: #e2e4e6;
+          --red: #d4351c; }}
   * {{ box-sizing: border-box; margin: 0; }}
-  body {{ font: 16px/1.5 system-ui, sans-serif; color: var(--text);
-         background: var(--bg); padding: 48px 16px; }}
-  main {{ max-width: 640px; margin: 0 auto; background: var(--card);
-         border-radius: 12px; padding: 32px; }}
-  .kicker {{ font-size: 12px; font-weight: 700; letter-spacing: .12em;
-            text-transform: uppercase; color: var(--accent); }}
-  h1 {{ font-size: 28px; margin: 6px 0 2px; }}
-  .sub, .foot {{ color: var(--mute); font-size: 14px; }}
-  .bar {{ height: 10px; background: var(--track); border-radius: 5px;
-         overflow: hidden; margin: 8px 0; }}
-  .bar span {{ display: block; height: 100%; background: var(--accent); }}
-  h2 {{ font-size: 14px; margin: 32px 0 8px; color: var(--mute); }}
+  body {{ font-family: "GDS Transport", "Frutiger", Arial, sans-serif;
+         color: var(--ink); background: #fff; line-height: 1.5; }}
+  header {{ background: var(--navy); border-bottom: 4px solid var(--yellow);
+           padding: 18px 16px; }}
+  header span {{ color: #fff; font-weight: 700; font-size: 24px; }}
+  main {{ max-width: 640px; margin: 0 auto; padding: 32px 16px 40px; }}
+  h1 {{ font-size: 32px; line-height: 1.2; margin: 4px 0 20px; }}
+  .bar {{ height: 12px; background: var(--track); margin: 12px 0 4px; }}
+  .bar span {{ display: block; height: 100%; background: var(--blue); }}
+  .bar span.over {{ background: var(--red); }}
+  .panel {{ background: var(--panel); border-left: 4px solid var(--link);
+           padding: 14px 16px; margin-top: 16px; }}
+  .panel b {{ color: var(--navy); font-size: 22px; display: block; }}
+  h2 {{ font-size: 20px; border-bottom: 1px solid var(--line);
+       padding-bottom: 8px; margin: 40px 0 4px; }}
   ul {{ list-style: none; padding: 0; }}
-  li {{ margin-bottom: 12px; }}
-  .row {{ display: flex; justify-content: space-between; font-size: 15px; }}
-  .foot {{ margin-top: 24px; font-size: 13px; }}
+  li {{ border-bottom: 1px solid var(--line); padding: 12px 0 14px; }}
+  .row {{ display: flex; justify-content: space-between; gap: 12px; }}
+  .row b {{ white-space: nowrap; }}
+  .row i {{ color: var(--grey); font-style: normal; }}
+  footer {{ background: var(--ink); color: var(--line);
+           font-size: 14px; padding: 14px 16px; text-align: center; }}
 </style>
 </head>
 <body>
+<header><span>SSC CE2</span></header>
 <main>
-  <div class="kicker">SSC CE2</div>
   <h1>{headline}</h1>
   {total_bar}
-  <p class="sub">{sub}</p>
+  <p class="panel"><b>{sub}</b></p>
   <h2>Breakdown</h2>
   <ul>
 {rows}
   </ul>
-  <p class="foot">Last updated {updated}.</p>
 </main>
+<footer>Last updated {updated}.</footer>
 </body>
 </html>
 """
