@@ -1,0 +1,35 @@
+name: Refresh progress page
+
+on:
+  schedule:
+    # Hourly, weekdays, covering 09:00-18:00 UK across BST and GMT. Off the
+    # top of the hour, which GitHub's busiest slot and the first to be dropped.
+    - cron: "17 8-18 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: progress-refresh
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate from Solidtime
+        env:
+          SOLIDTIME_TOKEN: ${{ secrets.SOLIDTIME_TOKEN }}
+          SOLIDTIME_URL: ${{ secrets.SOLIDTIME_URL }}
+          SOLIDTIME_ORG: ${{ secrets.SOLIDTIME_ORG }}
+        run: python3 scripts/gen_progress.py
+
+      # Commits every run so the "Last updated" time shows the last check.
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(progress): refresh tracked time from Solidtime"
+          git push
